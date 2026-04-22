@@ -1,0 +1,25 @@
+# MyAPITester Implementation Tasks
+
+- [x] Phase 1: Core Layout & Basic HTTP Requests
+  - [x] Initialize Electron + React + TypeScript project
+  - [x] Install UI dependencies (TailwindCSS, Lucide Icons, Monaco Editor)
+  - [x] Create basic dual-pane layout (sidebar, main content)
+  - [x] Implement URL input, method selector, and a Send button
+  - [x] Implement Electron IPC for making raw HTTP requests
+  - [x] Display request response (status, time, JSON body viewer)
+- [x] Phase 2: Local Persistence & Collections
+  - [x] Define data models for Collections, Folders, Requests
+  - [x] Implement local JSON file storage (`collections.json`) via Electron IPC
+  - [x] Render collections sidebar
+  - [x] Support saving/updating a request in a collection
+- [x] Phase 3: Variables Engine
+  - [x] Implement environments and globals data storage
+  - [x] Build replacement engine (replace `{{var}}` in string fields)
+  - [x] Add Environment selector UI
+- [x] Phase 4: Scripting Sandbox
+  - [x] Integrate code editor tabs (Pre-request, Tests)
+  - [x] Create Node.js `vm` sandbox mimicking Postman's `pm` API
+  - [x] Execute pre-request scripts before send, and test scripts after
+- [x] Phase 5: Import/Export
+  - [x] Add Postman collection v2.1.0 import parser
+  - [x] Export requests functionality
