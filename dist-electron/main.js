@@ -30,9 +30,10 @@ let fs = require("fs");
 let vm = require("vm");
 vm = __toESM(vm);
 //#region electron/main.ts
-electron.app.setName("MyAPITest");
+electron.app.setName("MyAPITester");
 process.env.DIST = (0, path.join)(__dirname, "../dist");
 process.env.VITE_PUBLIC = electron.app.isPackaged ? process.env.DIST : (0, path.join)(process.env.DIST, "../public");
+if (process.platform === "darwin") electron.app.dock.setIcon((0, path.join)(process.env.VITE_PUBLIC, "icon.png"));
 var win;
 var preload = (0, path.join)(__dirname, "./preload.js");
 var url = process.env.VITE_DEV_SERVER_URL;
@@ -45,6 +46,7 @@ function createWindow() {
 			x: 16,
 			y: 16
 		},
+		icon: (0, path.join)(process.env.VITE_PUBLIC, "icon.png"),
 		webPreferences: {
 			preload,
 			nodeIntegration: false,
@@ -53,7 +55,6 @@ function createWindow() {
 	});
 	if (url) win.loadURL(url);
 	else win.loadFile((0, path.join)(process.env.DIST, "index.html"));
-	win.webContents.openDevTools();
 }
 electron.app.on("window-all-closed", () => {
 	if (process.platform !== "darwin") electron.app.quit();
@@ -62,6 +63,11 @@ electron.app.on("activate", () => {
 	if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 electron.app.whenReady().then(() => {
+	electron.app.setAboutPanelOptions({
+		applicationName: "MyAPITester",
+		applicationVersion: "1.0.0",
+		iconPath: (0, path.join)(process.env.VITE_PUBLIC, "icon.png")
+	});
 	createWindow();
 	electron.ipcMain.handle("send-request", async (event, config) => {
 		try {

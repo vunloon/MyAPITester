@@ -5,11 +5,17 @@ import fs from 'fs/promises'
 import { existsSync } from 'fs'
 import vm from 'vm'
 
-app.setName('MyAPITest');
+app.setName('MyAPITester');
 
 // Set absolute path for local files
 process.env.DIST = join(__dirname, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : join(process.env.DIST, '../public')
+
+if (process.platform === 'darwin') {
+  app.dock.setIcon(join(process.env.VITE_PUBLIC, 'icon.png'));
+}
+
+
 
 let win: BrowserWindow | null
 
@@ -22,6 +28,7 @@ function createWindow() {
     height: 800,
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 16, y: 16 },
+    icon: join(process.env.VITE_PUBLIC, 'icon.png'),
     webPreferences: {
       preload,
       nodeIntegration: false,
@@ -35,7 +42,7 @@ function createWindow() {
     win.loadFile(join(process.env.DIST, 'index.html'))
   }
   
-  win.webContents.openDevTools()
+  // win.webContents.openDevTools()
 }
 
 app.on('window-all-closed', () => {
@@ -49,6 +56,12 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
+  app.setAboutPanelOptions({
+    applicationName: 'MyAPITester',
+    applicationVersion: '1.0.0',
+    iconPath: join(process.env.VITE_PUBLIC, 'icon.png')
+  });
+
   createWindow()
   
   // IPC for making HTTP requests bypassing CORS

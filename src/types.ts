@@ -37,3 +37,22 @@ export interface Environment {
   name: string;
   variables: EnvironmentVariable[];
 }
+
+export interface OpenTab {
+  id: string; // The request id, or a temp id for unsaved requests
+  name: string;
+  method: HttpMethod;
+  url: string;
+  body: string;
+  preRequestScript: string;
+  testScript: string;
+  headers: Array<{ key: string; value: string; active: boolean }>;
+  params: Array<{ key: string; value: string; active: boolean }>;
+  
+  response: any | null;
+  testResults: any[];
+  activeEditorTab: 'Params' | 'Headers' | 'Body' | 'Pre-request' | 'Tests';
+  activeResponseTab: 'Body' | 'Tests';
+  isDirty: boolean;
+  loading?: boolean;
+}

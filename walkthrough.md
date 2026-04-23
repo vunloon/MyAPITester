@@ -44,6 +44,9 @@ You can easily jumpstart MyAPITester by bringing over your existing setups.
 > Use the **Upload** icon within the Collections sidebar to import standard Postman Collection `v2.1.0` JSON files. It will automatically parse your nested `pre-request` hooks, endpoints, payload formats, and tests!
 - Press the **Download** icon to export your existing saved collections as JSON.
 
+### 6. Bug Fixes
+- **Electron Prompt Support**: Fixed an issue where creating a new Request or Collection failed. Electron disables `window.prompt` natively, so this was replaced with a sleek `<PromptDialog />` React component. Tab-switching, saving, and creation actions now properly await the user input correctly.
+
 ## Start the App
 
 The development server should already be running and presenting the desktop window. If the window was closed, you can rerun the app by opening a terminal inside your `MyAPITester` folder and executing:
