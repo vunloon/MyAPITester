@@ -1,73 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
-import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye } from 'lucide-react'
-import Editor from '@monaco-editor/react'
-import type { ApiCollection, ApiRequest, HttpMethod, Environment, EnvironmentVariable, OpenTab } from './types'
-import { KeyValueEditor } from './KeyValueEditor'
-import type { KeyValueItem } from './KeyValueEditor'
-import { PromptDialog } from './PromptDialog'
-import { EnvironmentManager } from './EnvironmentManager'
+import sys
 
-function App() {
-  const [openTabs, setOpenTabs] = useState<OpenTab[]>(() => {
-    try {
-      const saved = localStorage.getItem('openTabs')
-      if (saved) return JSON.parse(saved)
-    } catch (e) {
-      console.error('Failed to parse openTabs', e)
-    }
-    return [
-      {
-        id: 'default',
-        name: 'New Request',
-        method: 'GET',
-        url: 'https://jsonplaceholder.typicode.com/todos/1',
-        body: '{\n  \n}',
-        preRequestScript: '// pm.environment.set("test", "123");',
-        testScript: '// pm.test("Status code is 200", function () { pm.response.to.have.status(200); });',
-        headers: [],
-        params: [],
-        response: null,
-        testResults: [],
-        activeEditorTab: 'Body',
-        activeResponseTab: 'Body',
-        isDirty: false,
-        loading: false
-      }
-    ]
-  })
-  const [activeTabId, setActiveTabId] = useState<string>(() => {
-    return localStorage.getItem('activeTabId') || 'default'
-  })
+with open('src/App.tsx', 'r') as f:
+    content = f.read()
 
-  useEffect(() => {
-    localStorage.setItem('openTabs', JSON.stringify(openTabs))
-  }, [openTabs])
+# 1. Add resizer state and useEffect
+state_hook_str = "  const [theme, setTheme] = useState<string>(() => localStorage.getItem('theme') || 'dark')"
 
-  useEffect(() => {
-    localStorage.setItem('activeTabId', activeTabId)
-  }, [activeTabId])
-  const [copiedCurl, setCopiedCurl] = useState(false);
-  
-  const currentTab = openTabs.find(t => t.id === activeTabId)
-
-  const [collections, setCollections] = useState<ApiCollection[]>([])
-  const [collapsedCollections, setCollapsedCollections] = useState<Set<string>>(new Set())
-  
-  const [environments, setEnvironments] = useState<Environment[]>([])
-  const [activeEnvironmentId, setActiveEnvironmentId] = useState<string>('none')
-  const [globals, setGlobals] = useState<EnvironmentVariable[]>([
-    { key: 'baseUrl', value: 'https://jsonplaceholder.typicode.com', enabled: true }
-  ])
-  const [isEnvManagerOpen, setIsEnvManagerOpen] = useState(false);
-
-  const handleSaveEnvironments = async (newEnvs: Environment[], newGlobs: EnvironmentVariable[]) => {
-    setEnvironments(newEnvs);
-    setGlobals(newGlobs);
-    await window.api.writeEnvironments(newEnvs);
-    await window.api.writeGlobals(newGlobs);
-  };
-
-  const [theme, setTheme] = useState<string>(() => localStorage.getItem('theme') || 'dark')
+new_state_str = """  const [theme, setTheme] = useState<string>(() => localStorage.getItem('theme') || 'dark')
 
   const [responseHeight, setResponseHeight] = useState(300);
   const isResizing = useRef(false);
@@ -94,602 +33,24 @@ function App() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, []);"""
 
-  const [promptConfig, setPromptConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    defaultValue: string;
-    resolve: ((value: string | null) => void) | null;
-  }>({
-    isOpen: false,
-    title: '',
-    defaultValue: '',
-    resolve: null
-  });
-
-  const showPrompt = (title: string, defaultValue: string = ''): Promise<string | null> => {
-    return new Promise((resolve) => {
-      setPromptConfig({
-        isOpen: true,
-        title,
-        defaultValue,
-        resolve
-      });
-    });
-  };
-
-  const handlePromptSubmit = (value: string) => {
-    if (promptConfig.resolve) promptConfig.resolve(value);
-    setPromptConfig(prev => ({ ...prev, isOpen: false, resolve: null }));
-  };
-
-  const handlePromptCancel = () => {
-    if (promptConfig.resolve) promptConfig.resolve(null);
-    setPromptConfig(prev => ({ ...prev, isOpen: false, resolve: null }));
-  };
-
-  useEffect(() => {
-    localStorage.setItem('theme', theme)
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        saveCurrentRequest();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }); // Using no dependency array to always have the latest saveCurrentRequest closure
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useEffect(() => {
-    const colWithReq = collections.find(c => c.requests.some(r => r.id === activeTabId));
-    if (colWithReq) {
-      setCollapsedCollections(prev => {
-        if (prev.has(colWithReq.id)) {
-          const next = new Set(prev);
-          next.delete(colWithReq.id);
-          return next;
-        }
-        return prev;
-      });
-      setTimeout(() => {
-        const el = document.getElementById(`request-item-${activeTabId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }, 50);
-    }
-  }, [activeTabId, collections]);
-
-  const loadData = async () => {
-    try {
-      const colls = await window.api.readCollections()
-      setCollections(colls || [])
-      if (colls && colls.length > 0) {
-        setCollapsedCollections(new Set(colls.map((c: any) => c.id)))
-      }
-      const envs = await window.api.readEnvironments()
-      setEnvironments(envs || [])
-      const globs = await window.api.readGlobals()
-      if (globs && globs.length > 0) setGlobals(globs)
-    } catch (e) {
-      console.error('Failed to load data', e)
-    }
-  }
-
-  const saveCollections = async (newCollections: ApiCollection[]) => {
-    setCollections(newCollections)
-    await window.api.writeCollections(newCollections)
-  }
-
-  const updateCurrentTab = (updates: Partial<OpenTab>) => {
-    setOpenTabs(tabs => tabs.map(t => t.id === activeTabId ? { ...t, ...updates, isDirty: true } : t))
-  }
-
-  const updateTabWithoutDirty = (tabId: string, updates: Partial<OpenTab>) => {
-    setOpenTabs(tabs => tabs.map(t => t.id === tabId ? { ...t, ...updates } : t))
-  }
-
-  const handleParamsChange = (newParams: KeyValueItem[]) => {
-    if (!currentTab) return;
-    const urlParts = currentTab.url.split('?');
-    const baseUrl = urlParts[0];
-    
-    const activeParams = newParams.filter(p => p.active && p.key);
-    
-    let newUrl = baseUrl;
-    if (activeParams.length > 0) {
-      const qs = activeParams.map(p => `${p.key}=${p.value}`).join('&');
-      newUrl = `${baseUrl}?${qs}`;
-    } else if (currentTab.url.includes('?')) {
-      newUrl = baseUrl;
-    }
-    
-    updateCurrentTab({ params: newParams, url: newUrl });
-  };
-
-  const handleUrlChange = (newUrl: string) => {
-    if (!currentTab) return;
-    const urlParts = newUrl.split('?');
-    if (urlParts.length > 1) {
-      const qs = urlParts.slice(1).join('?');
-      const pairs = qs.split('&');
-      
-      const inactiveParams = (currentTab.params || []).filter(p => !p.active);
-      
-      const parsedParams = pairs.map(pair => {
-         const [k, ...v] = pair.split('=');
-         return { key: k || '', value: v.join('=') || '', active: true };
-      });
-      
-      const validParsed = parsedParams.filter(p => p.key || p.value);
-      
-      const finalParams = [...validParsed, ...inactiveParams];
-      updateCurrentTab({ url: newUrl, params: finalParams });
-    } else {
-      const inactiveParams = (currentTab.params || []).filter(p => !p.active);
-      updateCurrentTab({ url: newUrl, params: inactiveParams });
-    }
-  };
-
-  const resolveVariables = (text: string): string => {
-    let activeEnvVars: EnvironmentVariable[] = [];
-    if (activeEnvironmentId !== 'none') {
-      const activeEnv = environments.find(e => e.id === activeEnvironmentId);
-      if (activeEnv) activeEnvVars = activeEnv.variables;
-    }
-    
-    return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-      const envVar = activeEnvVars.find(v => v.key === key && v.enabled);
-      if (envVar) return envVar.value;
-      const globVar = globals.find(v => v.key === key && v.enabled);
-      if (globVar) return globVar.value;
-      return match; 
-    });
-  }
-
-  const getActiveEnvMap = () => {
-    const map: Record<string, string> = {};
-    if (activeEnvironmentId !== 'none') {
-      const activeEnv = environments.find(e => e.id === activeEnvironmentId);
-      activeEnv?.variables.forEach(v => { if(v.enabled) map[v.key] = v.value });
-    }
-    return map;
-  }
-
-  const getGlobalsMap = () => {
-    const map: Record<string, string> = {};
-    globals.forEach(v => { if(v.enabled) map[v.key] = v.value });
-    return map;
-  }
-
-  const syncVarsMapAfterScript = async (pmData: any) => {
-    if (pmData.globals) {
-      const newGlobals = [...globals];
-      for (const key of Object.keys(pmData.globals)) {
-        const existing = newGlobals.find(g => g.key === key);
-        if (existing) {
-          existing.value = pmData.globals[key];
-        } else {
-          newGlobals.push({ key, value: pmData.globals[key], enabled: true });
-        }
-      }
-      setGlobals(newGlobals);
-      await window.api.writeGlobals(newGlobals);
-    }
-    
-    if (pmData.environment && activeEnvironmentId !== 'none') {
-      const newEnvs = [...environments];
-      const envIndex = newEnvs.findIndex(e => e.id === activeEnvironmentId);
-      if (envIndex !== -1) {
-        for (const key of Object.keys(pmData.environment)) {
-          const existing = newEnvs[envIndex].variables.find(v => v.key === key);
-          if (existing) {
-            existing.value = pmData.environment[key];
-          } else {
-            newEnvs[envIndex].variables.push({ key, value: pmData.environment[key], enabled: true });
-          }
-        }
-        setEnvironments(newEnvs);
-        await window.api.writeEnvironments(newEnvs);
-      }
-    }
-  }
-
-  const sendRequest = async () => {
-    if (!currentTab) return;
-    const tabId = currentTab.id;
-    
-    updateTabWithoutDirty(tabId, { loading: true, testResults: [], activeResponseTab: 'Body', response: null })
-
-    try {
-      let currentPmData: any = {
-        environment: getActiveEnvMap(),
-        globals: getGlobalsMap(),
-        request: { url: currentTab.url, method: currentTab.method, body: currentTab.body },
-        info: { requestName: currentTab.name }
-      };
-
-      if (currentTab.preRequestScript.trim()) {
-        const result = await window.api.executeScript({
-          script: currentTab.preRequestScript,
-          pmData: currentPmData
-        });
-        if (result.success && result.pmData) {
-          currentPmData = result.pmData;
-          await syncVarsMapAfterScript(result.pmData);
-        } else {
-          console.error("Pre-request script error:", result.error);
-        }
-      }
-
-      let finalBody = currentTab.body;
-      const resolvedUrl = resolveVariables(currentTab.url);
-      const resolvedBody = resolveVariables(finalBody);
-      
-      let parsedBody = undefined;
-      if (['POST', 'PUT', 'PATCH'].includes(currentTab.method)) {
-        try {
-          parsedBody = JSON.parse(resolvedBody);
-        } catch(e) {
-          parsedBody = resolvedBody; 
-        }
-      }
-
-      const res = await window.api.sendRequest({
-        url: resolvedUrl,
-        method: currentTab.method,
-        data: parsedBody
-      })
-      
-      let newTestResults: any[] = [];
-      let newActiveResponseTab: 'Body' | 'Tests' = 'Body';
-
-      if (currentTab.testScript.trim() && res) {
-        currentPmData.response = res; 
-        const testResult = await window.api.executeScript({
-          script: currentTab.testScript,
-          pmData: currentPmData
-        });
-        
-        if (testResult.success && testResult.pmData) {
-          await syncVarsMapAfterScript(testResult.pmData);
-          if (testResult.pmData.tests) {
-            newTestResults = testResult.pmData.tests;
-            if (testResult.pmData.tests.length > 0) {
-              newActiveResponseTab = 'Tests';
-            }
-          }
-        } else {
-          console.error("Test script error:", testResult.error);
-        }
-      }
-
-      updateTabWithoutDirty(tabId, { loading: false, response: res, testResults: newTestResults, activeResponseTab: newActiveResponseTab });
-
-    } catch (e) {
-      console.error(e)
-      updateTabWithoutDirty(tabId, { loading: false });
-    }
-  }
-
-  const copyCurl = () => {
-    if (!currentTab) return;
-    
-    const resolvedUrl = resolveVariables(currentTab.url);
-    const resolvedBody = resolveVariables(currentTab.body);
-    
-    let curl = `curl -X ${currentTab.method} '${resolvedUrl}'`;
-    
-    const activeHeaders = currentTab.headers.filter(h => h.active && h.key);
-    activeHeaders.forEach(h => {
-      const resolvedValue = resolveVariables(h.value);
-      curl += ` \\\n  -H '${h.key}: ${resolvedValue}'`;
-    });
-    
-    if (resolvedBody.trim() && ['POST', 'PUT', 'PATCH'].includes(currentTab.method) && !activeHeaders.find(h => h.key.toLowerCase() === 'content-type')) {
-       curl += ` \\\n  -H 'Content-Type: application/json'`;
-    }
-
-    if (resolvedBody.trim() && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(currentTab.method)) {
-      const safeBody = resolvedBody.replace(/'/g, "'\\''");
-      curl += ` \\\n  -d '${safeBody}'`;
-    }
-    
-    navigator.clipboard.writeText(curl).then(() => {
-      setCopiedCurl(true);
-      setTimeout(() => setCopiedCurl(false), 2000);
-    }).catch(err => {
-      console.error('Failed to copy', err);
-    });
-  };
-
-  const createNewCollection = async () => {
-    const name = await showPrompt('Collection Name:')
-    if (!name) return
-    const newCol: ApiCollection = {
-      id: Date.now().toString(),
-      name,
-      folders: [],
-      requests: []
-    }
-    saveCollections([...collections, newCol])
-  }
-
-  const deleteCollection = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this collection?')) return;
-    const newCollections = collections.filter(c => c.id !== id);
-    saveCollections(newCollections);
-  }
-
-  const addNewRequestToCollection = async (e: React.MouseEvent, collectionId: string) => {
-    e.stopPropagation();
-    const name = await showPrompt('New Request Name:');
-    if (!name) return;
-    
-    const newReq: ApiRequest = {
-      id: Date.now().toString(),
-      name,
-      method: 'GET',
-      url: '',
-      body: '{\n  \n}',
-      preRequestScript: '',
-      testScript: '',
-      headers: [],
-      params: []
-    };
-    
-    const newCollections = collections.map(col => {
-      if (col.id === collectionId) {
-        return { ...col, requests: [...col.requests, newReq] };
-      }
-      return col;
-    });
-    
-    saveCollections(newCollections);
-    
-    if (collapsedCollections.has(collectionId)) {
-      toggleCollection(collectionId);
-    }
-    
-    loadRequest(newReq);
-  }
-
-  const deleteRequest = (e: React.MouseEvent, collectionId: string, requestId: string) => {
-    e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this request?')) return;
-    
-    const newCollections = collections.map(col => {
-      if (col.id === collectionId) {
-        return { ...col, requests: col.requests.filter(r => r.id !== requestId) };
-      }
-      return col;
-    });
-    
-    saveCollections(newCollections);
-    
-    setOpenTabs(prev => prev.filter(t => t.id !== requestId));
-    if (activeTabId === requestId) {
-      const remainingTabs = openTabs.filter(t => t.id !== requestId);
-      if (remainingTabs.length > 0) {
-        setActiveTabId(remainingTabs[remainingTabs.length - 1].id);
-      }
-    }
-  }
+if state_hook_str in content:
+    content = content.replace(state_hook_str, new_state_str)
+else:
+    print("Could not find state hook insertion point")
+    sys.exit(1)
 
 
-  const exportCollections = () => {
-    const data = JSON.stringify(collections, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `myapitester_export_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+# 2. Replace return block
+search_str = '  return (\n    <div className="flex h-screen w-screen bg-transparent text-text-secondary font-sans p-4 gap-4 overflow-hidden box-border"'
+start_idx = content.find(search_str)
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const postman = JSON.parse(evt.target?.result as string);
-        const newCol: ApiCollection = {
-          id: postman.info?._postman_id || Date.now().toString(),
-          name: postman.info?.name || 'Imported Collection',
-          folders: [],
-          requests: []
-        };
+if start_idx == -1:
+    print("Could not find return block")
+    sys.exit(1)
 
-        const parseItems = (items: any[]) => {
-          items.forEach((item: any) => {
-            if(item.request) {
-               newCol.requests.push({
-                 id: item.id || Date.now().toString() + Math.random(),
-                 name: item.name,
-                 method: item.request.method,
-                 url: item.request.url?.raw || item.request.url || '',
-                 body: item.request.body?.raw || '',
-                 headers: item.request.header?.map((h: any) => ({key: h.key, value: h.value, active: true})) || [],
-                 params: [],
-                 preRequestScript: item.event?.find((ev:any)=>ev.listen==='prerequest')?.script?.exec?.join('\n') || '',
-                 testScript: item.event?.find((ev:any)=>ev.listen==='test')?.script?.exec?.join('\n') || ''
-               });
-            } else if (item.item) {
-               parseItems(item.item); 
-            }
-          });
-        };
-        
-        if (postman.item) parseItems(postman.item);
-        
-        saveCollections([...collections, newCol]);
-      } catch (err) {
-        alert('Failed to import: Invalid Postman v2.1 JSON');
-      }
-    };
-    reader.readAsText(file);
-    if(fileInputRef.current) fileInputRef.current.value = '';
-  }
-
-  const toggleCollection = (id: string) => {
-    setCollapsedCollections(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  const saveTab = async (tabToSave: OpenTab): Promise<string | null> => {
-    if (collections.length === 0) {
-      alert('Please create a collection first')
-      return null;
-    }
-    
-    let name = tabToSave.name;
-    const isTemp = tabToSave.id.startsWith('default') || tabToSave.id.startsWith('temp');
-    if (isTemp) {
-      const promptName = await showPrompt('Request Name:', name);
-      if (!promptName) return null;
-      name = promptName;
-    }
-
-    const reqId = isTemp ? Date.now().toString() : tabToSave.id;
-
-    const req: ApiRequest = {
-      id: reqId,
-      name,
-      method: tabToSave.method,
-      url: tabToSave.url,
-      body: tabToSave.body,
-      preRequestScript: tabToSave.preRequestScript,
-      testScript: tabToSave.testScript,
-      headers: tabToSave.headers,
-      params: tabToSave.params
-    }
-
-    const newCollections = [...collections]
-    
-    let found = false
-    for (const col of newCollections) {
-      const idx = col.requests.findIndex(r => r.id === req.id)
-      if (idx !== -1) {
-        col.requests[idx] = req
-        found = true
-        break
-      }
-    }
-
-    if (!found && newCollections.length > 0) {
-      newCollections[0].requests.push(req)
-    }
-
-    saveCollections(newCollections)
-    updateTabWithoutDirty(tabToSave.id, { id: req.id, name: req.name, isDirty: false });
-    
-    return reqId;
-  }
-
-  const saveCurrentRequest = async () => {
-    if (currentTab) {
-      const newId = await saveTab(currentTab);
-      if (newId && currentTab.id !== newId) {
-        setActiveTabId(newId);
-      }
-    }
-  }
-
-  const handleSwitchTab = async (newTabId: string) => {
-    if (newTabId === activeTabId) return;
-    if (currentTab && currentTab.isDirty) {
-      await saveTab(currentTab);
-    }
-    setActiveTabId(newTabId);
-  }
-
-  const loadRequest = async (req: ApiRequest) => {
-    if (currentTab && currentTab.isDirty && currentTab.id !== req.id) {
-      await saveTab(currentTab);
-    }
-
-    const existing = openTabs.find(t => t.id === req.id);
-    if (existing) {
-      setActiveTabId(req.id);
-    } else {
-      const newTab: OpenTab = {
-        id: req.id,
-        name: req.name,
-        method: req.method,
-        url: req.url,
-        body: req.body || '',
-        preRequestScript: req.preRequestScript || '',
-        testScript: req.testScript || '',
-        headers: req.headers || [],
-        params: req.params || [],
-        response: null,
-        testResults: [],
-        activeEditorTab: 'Body',
-        activeResponseTab: 'Body',
-        isDirty: false,
-        loading: false
-      };
-      setOpenTabs(prev => [...prev, newTab]);
-      setActiveTabId(req.id);
-    }
-  }
-
-  const closeTab = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    
-    const tabToClose = openTabs.find(t => t.id === id);
-    if (tabToClose && tabToClose.isDirty) {
-      await saveTab(tabToClose);
-    }
-
-    setOpenTabs(prev => {
-      const newTabs = prev.filter(t => t.id !== id);
-      if (newTabs.length === 0) {
-        const defaultTab: OpenTab = {
-           id: 'temp-' + Date.now(),
-           name: 'New Request',
-           method: 'GET',
-           url: '',
-           body: '{\n  \n}',
-           preRequestScript: '',
-           testScript: '',
-           headers: [],
-           params: [],
-           response: null,
-           testResults: [],
-           activeEditorTab: 'Body',
-           activeResponseTab: 'Body',
-           isDirty: false,
-           loading: false
-        };
-        setActiveTabId(defaultTab.id);
-        return [defaultTab];
-      } else if (activeTabId === id) {
-        setActiveTabId(newTabs[newTabs.length - 1].id);
-      }
-      return newTabs;
-    });
-  }
-
-  return (
+new_return = """  return (
     <div className="flex h-screen w-screen bg-transparent text-text-secondary font-sans p-4 gap-4 overflow-hidden box-border" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
       
       {/* Sidebar (Left Side) */}
@@ -730,7 +91,6 @@ function App() {
                   {col.requests.map(req => (
                     <div 
                       key={req.id} 
-                      id={`request-item-${req.id}`}
                       onClick={() => loadRequest(req)}
                       className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer text-sm transition-all border ${activeTabId === req.id ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-text-primary' : 'border-transparent text-text-tertiary hover:bg-white/5 hover:text-text-primary'}`}
                     >
@@ -810,7 +170,7 @@ function App() {
                name: 'New Request',
                method: 'GET',
                url: '',
-               body: '{\n  \n}',
+               body: '{\\n  \\n}',
                preRequestScript: '',
                testScript: '',
                headers: [],
@@ -876,9 +236,6 @@ function App() {
                       <option key={env.id} value={env.id} className="bg-bg-surface">{env.name}</option>
                     ))}
                   </select>
-                  <button onClick={() => setIsEnvManagerOpen(true)} className="text-text-tertiary hover:text-[var(--accent)] ml-1 p-1 hover:bg-white/10 rounded-md transition-colors" title="Manage Environments">
-                    <Eye size={14} />
-                  </button>
                 </div>
                 <div className="flex items-center space-x-2">
                   <button 
@@ -1044,7 +401,7 @@ function App() {
             <div className="text-lg font-medium">No active requests</div>
             <button 
               onClick={() => {
-                const newTab: OpenTab = { id: 'temp-' + Date.now(), name: 'New Request', method: 'GET', url: '', body: '{\n  \n}', preRequestScript: '', testScript: '', headers: [], params: [], response: null, testResults: [], activeEditorTab: 'Body', activeResponseTab: 'Body', isDirty: false, loading: false };
+                const newTab: OpenTab = { id: 'temp-' + Date.now(), name: 'New Request', method: 'GET', url: '', body: '{\\n  \\n}', preRequestScript: '', testScript: '', headers: [], params: [], response: null, testResults: [], activeEditorTab: 'Body', activeResponseTab: 'Body', isDirty: false, loading: false };
                 setOpenTabs(prev => [...prev, newTab]);
                 setActiveTabId(newTab.id);
               }}
@@ -1063,16 +420,12 @@ function App() {
         onSubmit={handlePromptSubmit}
         onCancel={handlePromptCancel}
       />
-      
-      <EnvironmentManager 
-        isOpen={isEnvManagerOpen}
-        onClose={() => setIsEnvManagerOpen(false)}
-        environments={environments}
-        globals={globals}
-        onSave={handleSaveEnvironments}
-      />
     </div>
   )
 }
 
 export default App
+"""
+
+with open('src/App.tsx', 'w') as f:
+    f.write(content[:start_idx] + new_return)

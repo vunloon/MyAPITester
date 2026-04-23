@@ -44,14 +44,14 @@ export function KeyValueEditor({ items, onChange, namePlaceholder = "Key", value
   }
 
   return (
-    <div className="flex flex-col w-full h-full overflow-y-auto bg-bg-surface">
+    <div className="flex flex-col w-full h-full overflow-y-auto bg-transparent">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="border-b border-border-main text-text-tertiary text-xs uppercase bg-[#252525]">
-            <th className="w-10 p-2 font-normal text-center border-r border-border-main"></th>
-            <th className="p-2 font-normal border-r border-border-main w-5/12">Key</th>
-            <th className="p-2 font-normal border-r border-border-main w-6/12">Value</th>
-            <th className="w-10 p-2 font-normal text-center"></th>
+          <tr className="border-b border-[var(--panel-border)] text-text-tertiary text-xs uppercase bg-black/20 backdrop-blur-md">
+            <th className="w-10 p-3 font-semibold text-center border-r border-[var(--panel-border)]"></th>
+            <th className="p-3 font-semibold border-r border-[var(--panel-border)] w-5/12">Key</th>
+            <th className="p-3 font-semibold border-r border-[var(--panel-border)] w-6/12">Value</th>
+            <th className="w-10 p-3 font-semibold text-center"></th>
           </tr>
         </thead>
         <tbody>
@@ -59,43 +59,43 @@ export function KeyValueEditor({ items, onChange, namePlaceholder = "Key", value
             const isLast = idx === displayItems.length - 1;
             const isEmpty = !item.key && !item.value;
             return (
-              <tr key={idx} className="border-b border-border-main hover:bg-bg-hover group transition-colors">
-                <td className="p-2 text-center align-middle border-r border-border-main">
+              <tr key={idx} className="border-b border-[var(--panel-border)] hover:bg-white/5 group transition-colors">
+                <td className="p-2 text-center align-middle border-r border-[var(--panel-border)]">
                   {(!isLast || !isEmpty) ? (
                     <input 
                       type="checkbox" 
                       checked={item.active} 
                       onChange={(e) => handleItemChange(idx, 'active', e.target.checked)}
-                      className="accent-orange-500 w-3.5 h-3.5 cursor-pointer rounded"
+                      className="accent-[var(--accent)] w-3.5 h-3.5 cursor-pointer rounded"
                     />
                   ) : null}
                 </td>
-                <td className="p-0 border-r border-border-main">
+                <td className="p-0 border-r border-[var(--panel-border)]">
                   <input 
                     type="text" 
                     value={item.key} 
                     onChange={(e) => handleItemChange(idx, 'key', e.target.value)}
                     placeholder={namePlaceholder}
-                    className={`w-full bg-transparent p-2 outline-none text-sm font-mono ${!item.active ? 'text-text-tertiary line-through' : 'text-gray-200'} placeholder-gray-600 focus:bg-bg-hover`}
+                    className={`w-full bg-transparent p-3 outline-none text-sm font-mono transition-colors ${!item.active ? 'text-text-tertiary line-through' : 'text-text-primary'} placeholder-text-tertiary/50 focus:bg-white/5`}
                   />
                 </td>
-                <td className="p-0 border-r border-border-main">
+                <td className="p-0 border-r border-[var(--panel-border)]">
                   <input 
                     type="text" 
                     value={item.value} 
                     onChange={(e) => handleItemChange(idx, 'value', e.target.value)}
                     placeholder={valuePlaceholder}
-                    className={`w-full bg-transparent p-2 outline-none text-sm font-mono ${!item.active ? 'text-text-tertiary line-through' : 'text-gray-200'} placeholder-gray-600 focus:bg-bg-hover`}
+                    className={`w-full bg-transparent p-3 outline-none text-sm font-mono transition-colors ${!item.active ? 'text-text-tertiary line-through' : 'text-text-primary'} placeholder-text-tertiary/50 focus:bg-white/5`}
                   />
                 </td>
                 <td className="p-2 text-center align-middle">
                   {(!isLast || !isEmpty) && (
                     <button 
                       onClick={() => handleRemoveItem(idx)}
-                      className="text-text-tertiary hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+                      className="text-text-tertiary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 p-1.5 rounded-md hover:bg-red-900/20"
                       title="Delete"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={16} />
                     </button>
                   )}
                 </td>

@@ -1,13 +1,1 @@
-let electron = require("electron");
-//#region electron/preload.ts
-electron.contextBridge.exposeInMainWorld("api", {
-	sendRequest: (config) => electron.ipcRenderer.invoke("send-request", config),
-	readCollections: () => electron.ipcRenderer.invoke("read-collections"),
-	writeCollections: (collections) => electron.ipcRenderer.invoke("write-collections", collections),
-	readGlobals: () => electron.ipcRenderer.invoke("read-globals"),
-	writeGlobals: (vars) => electron.ipcRenderer.invoke("write-globals", vars),
-	readEnvironments: () => electron.ipcRenderer.invoke("read-environments"),
-	writeEnvironments: (envs) => electron.ipcRenderer.invoke("write-environments", envs),
-	executeScript: (params) => electron.ipcRenderer.invoke("execute-script", params)
-});
-//#endregion
+let e=require(`electron`);e.contextBridge.exposeInMainWorld(`api`,{sendRequest:t=>e.ipcRenderer.invoke(`send-request`,t),readCollections:()=>e.ipcRenderer.invoke(`read-collections`),writeCollections:t=>e.ipcRenderer.invoke(`write-collections`,t),readGlobals:()=>e.ipcRenderer.invoke(`read-globals`),writeGlobals:t=>e.ipcRenderer.invoke(`write-globals`,t),readEnvironments:()=>e.ipcRenderer.invoke(`read-environments`),writeEnvironments:t=>e.ipcRenderer.invoke(`write-environments`,t),executeScript:t=>e.ipcRenderer.invoke(`execute-script`,t)});

@@ -22,6 +22,7 @@ All your requested history and collections are persistently stored in your syste
 Implemented `Environments` and `Globals`. You can seamlessly use Postman's standard templating engine:
 - Insert variables like `{{baseUrl}}/api/v1/users` inside the URL bar or within your request body payload.
 - The active environment is easily toggleable from a dropdown menu right beside the URL bar.
+- **Environment Manager**: Click the eye/settings icon next to the dropdown to manage your variables. This new UI allows you to create, rename, and delete environments, as well as define and toggle Global and Environment-specific variables via an intuitive grid editor.
 
 ### 4. Sandbox Execution Engine (`pm` emulator)
 MyAPITester securely mimics Postman's `pm` JavaScript namespace by running your scripts inside an isolated Node.js `vm` (Virtual Machine).
