@@ -1,59 +1,38 @@
-# MyAPITester Implementation Walkthrough
+# GitHub Actions Release Pipeline Implementation
 
-The **MyAPITester** Postman clone has been fully implemented using Electron, React, and Vite! Below is a summary of the accomplishments and the core features you can now use.
+I've successfully implemented the GitHub Actions CI/CD pipeline to automatically build and release `MyAPITester` for macOS, Linux, and Windows.
 
-> [!NOTE]
-> The app is built on Electron to securely bypass browser CORS limitations and to read/write settings (collections, environments) directly to your local file system, providing a true native desktop application experience.
+## Changes Made
 
-## Features Implemented
+### 1. Created Workflow File
+Created the GitHub Actions workflow at `.github/workflows/release.yml`. This workflow:
+- Triggers whenever a new tag starting with `v` (e.g., `v1.0.0`) is pushed to the repository.
+- Uses a matrix strategy to run jobs concurrently on `ubuntu-latest`, `macos-latest`, and `windows-latest`.
+- Sets up Node.js, installs dependencies, builds the Vite+React application, and packages it using `electron-builder`.
+- Uses `GH_TOKEN` and `--publish always` to automatically attach the resulting executables and installers (`.dmg`, `.AppImage`, and `.exe`) to the GitHub Release.
 
-### 1. Robust Core Layout & Networking
-- **Vite & React** frontend with an ultra-responsive layout heavily inspired by modern VS Code / Postman aesthetics.
-- Features dual-pane navigation (resizing constraints built-in), supporting `GET`, `POST`, `PUT`, `PATCH`, and `DELETE`.
-- Monaco Editor integration for JSON formatting and syntax highlighting.
-- Built-in request timer and response size metrics.
+### 2. Updated `package.json`
+Added the `repository` field to `package.json` with the URL `https://github.com/vunloon/MyAPITester.git`. This ensures that `electron-builder` correctly identifies where to push the GitHub release artifacts.
 
-### 2. Local Persistence (Collections)
-All your requested history and collections are persistently stored in your system's application data folder, mapping down to an internal `collections.json` file.
-- Add new requests to folders directly from the sidebar.
-- Switch seamlessly between saved requests, maintaining individual tabs (Pre-request scripts, Test scripts, Body).
+## How to Test
 
-### 3. Smart Variables Engine
-Implemented `Environments` and `Globals`. You can seamlessly use Postman's standard templating engine:
-- Insert variables like `{{baseUrl}}/api/v1/users` inside the URL bar or within your request body payload.
-- The active environment is easily toggleable from a dropdown menu right beside the URL bar.
-- **Environment Manager**: Click the eye/settings icon next to the dropdown to manage your variables. This new UI allows you to create, rename, and delete environments, as well as define and toggle Global and Environment-specific variables via an intuitive grid editor.
+To trigger the release pipeline, follow these steps in your terminal:
 
-### 4. Sandbox Execution Engine (`pm` emulator)
-MyAPITester securely mimics Postman's `pm` JavaScript namespace by running your scripts inside an isolated Node.js `vm` (Virtual Machine).
-- **Pre-request Scripts**: Safely inject values into the `pm.environment` or `pm.globals` *before* the network call flies.
-  ```javascript
-  // Set an authorization token before request
-  pm.environment.set("auth_token", "Bearer abc_123");
-  ```
-- **Test Scripts**: Validate your response outputs and test behaviors:
-  ```javascript
-  pm.test("Status code is 200", function () {
-    if (pm.response.status !== 200) throw new Error("Expected 200");
-  });
-  ```
-- All test results are captured and shown cleanly inside the new "Test Results" tab on the response pane.
-
-### 5. Postman Import & Export
-You can easily jumpstart MyAPITester by bringing over your existing setups.
-> [!TIP]
-> Use the **Upload** icon within the Collections sidebar to import standard Postman Collection `v2.1.0` JSON files. It will automatically parse your nested `pre-request` hooks, endpoints, payload formats, and tests!
-- Press the **Download** icon to export your existing saved collections as JSON.
-
-### 6. Bug Fixes
-- **Electron Prompt Support**: Fixed an issue where creating a new Request or Collection failed. Electron disables `window.prompt` natively, so this was replaced with a sleek `<PromptDialog />` React component. Tab-switching, saving, and creation actions now properly await the user input correctly.
-
-## Start the App
-
-The development server should already be running and presenting the desktop window. If the window was closed, you can rerun the app by opening a terminal inside your `MyAPITester` folder and executing:
-```sh
-npm run dev
+1. Stage and commit the changes:
+```bash
+git add .
+git commit -m "chore: setup github actions release pipeline"
 ```
 
-> [!IMPORTANT]
-> The application uses Node.js `vm` for executing user-defined scripts. Under the hood, we pass sanitized contexts (excluding critical Node globals like `require` or `process`) to prevent arbitrary system commands from firing.
+2. Create a version tag (e.g., `v1.0.0-beta`):
+```bash
+git tag v1.0.0-beta
+```
+
+3. Push the commit and the tag to your repository:
+```bash
+git push origin main # or whatever your main branch is
+git push origin v1.0.0-beta
+```
+
+After pushing, head over to the **Actions** tab on your GitHub repository page. You will see the `Release MyAPITester` workflow running. Once the three jobs finish successfully, a new release will be created under the **Releases** section, with the macOS, Windows, and Linux executables attached!
