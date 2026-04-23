@@ -29,6 +29,11 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Set Version from Tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          npm version $VERSION --no-git-tag-version
+
       - name: Build and Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
