@@ -198,7 +198,36 @@ app.whenReady().then(() => {
         }
       };
 
-      const context = vm.createContext({ pm, console });
+      const client = {
+        test: (name: string, fn: any) => {
+          try {
+            fn();
+            params.pmData.tests = params.pmData.tests || [];
+            params.pmData.tests.push({ name, status: 'pass' });
+          } catch(e: any) {
+            params.pmData.tests = params.pmData.tests || [];
+            params.pmData.tests.push({ name, status: 'fail', error: e.message });
+          }
+        },
+        assert: (condition: boolean, msg?: string) => {
+          if (!condition) throw new Error(msg || "Assertion failed");
+        },
+        global: {
+          set: (key: string, value: string) => { params.pmData.globals[key] = value },
+          get: (key: string) => params.pmData.globals[key],
+          isEmpty: () => Object.keys(params.pmData.globals).length === 0,
+          clear: (key: string) => delete params.pmData.globals[key],
+          clearAll: () => { params.pmData.globals = {} }
+        },
+        log: (msg: any) => console.log(msg)
+      };
+
+      const response = params.pmData.response ? {
+        ...params.pmData.response,
+        body: params.pmData.response.data
+      } : undefined;
+
+      const context = vm.createContext({ pm, client, response, console });
       vm.runInContext(params.script, context);
       
       return { success: true, pmData: params.pmData };

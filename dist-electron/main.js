@@ -212,8 +212,48 @@ electron.app.whenReady().then(() => {
 					}
 				}
 			};
+			const client = {
+				test: (name, fn) => {
+					try {
+						fn();
+						params.pmData.tests = params.pmData.tests || [];
+						params.pmData.tests.push({
+							name,
+							status: "pass"
+						});
+					} catch (e) {
+						params.pmData.tests = params.pmData.tests || [];
+						params.pmData.tests.push({
+							name,
+							status: "fail",
+							error: e.message
+						});
+					}
+				},
+				assert: (condition, msg) => {
+					if (!condition) throw new Error(msg || "Assertion failed");
+				},
+				global: {
+					set: (key, value) => {
+						params.pmData.globals[key] = value;
+					},
+					get: (key) => params.pmData.globals[key],
+					isEmpty: () => Object.keys(params.pmData.globals).length === 0,
+					clear: (key) => delete params.pmData.globals[key],
+					clearAll: () => {
+						params.pmData.globals = {};
+					}
+				},
+				log: (msg) => console.log(msg)
+			};
+			const response = params.pmData.response ? {
+				...params.pmData.response,
+				body: params.pmData.response.data
+			} : void 0;
 			const context = vm.default.createContext({
 				pm,
+				client,
+				response,
 				console
 			});
 			vm.default.runInContext(params.script, context);

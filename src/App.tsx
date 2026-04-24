@@ -6,7 +6,8 @@ import { KeyValueEditor } from './KeyValueEditor'
 import type { KeyValueItem } from './KeyValueEditor'
 import { PromptDialog } from './PromptDialog'
 import { EnvironmentManager } from './EnvironmentManager'
-
+import { parseHttpFile } from './utils/httpParser'
+import { parseHttpEnvironmentFile } from './utils/envParser'
 function App() {
   const [openTabs, setOpenTabs] = useState<OpenTab[]>(() => {
     try {
@@ -377,10 +378,17 @@ function App() {
         }
       }
 
+      const activeHeaders = currentTab.headers.filter(h => h.active && h.key);
+      const resolvedHeaders: Record<string, string> = {};
+      activeHeaders.forEach(h => {
+        resolvedHeaders[h.key] = resolveVariables(h.value);
+      });
+
       const res = await window.api.sendRequest({
         url: resolvedUrl,
         method: currentTab.method,
-        data: parsedBody
+        data: parsedBody,
+        headers: resolvedHeaders
       })
       
       let newTestResults: any[] = [];
@@ -566,48 +574,75 @@ function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
+    const text = await file.text();
+    
+    if (file.name.endsWith('.http') || file.name.endsWith('.rest')) {
       try {
-        const postman = JSON.parse(evt.target?.result as string);
-        const newCol: ApiCollection = {
-          id: postman.info?._postman_id || Date.now().toString(),
-          name: postman.info?.name || 'Imported Collection',
-          folders: [],
-          requests: []
-        };
-
-        const parseItems = (items: any[]) => {
-          items.forEach((item: any) => {
-            if(item.request) {
-               newCol.requests.push({
-                 id: item.id || Date.now().toString() + Math.random(),
-                 name: item.name,
-                 method: item.request.method,
-                 url: item.request.url?.raw || item.request.url || '',
-                 body: item.request.body?.raw || '',
-                 headers: item.request.header?.map((h: any) => ({key: h.key, value: h.value, active: true})) || [],
-                 params: [],
-                 preRequestScript: item.event?.find((ev:any)=>ev.listen==='prerequest')?.script?.exec?.join('\n') || '',
-                 testScript: item.event?.find((ev:any)=>ev.listen==='test')?.script?.exec?.join('\n') || ''
-               });
-            } else if (item.item) {
-               parseItems(item.item); 
-            }
-          });
-        };
-        
-        if (postman.item) parseItems(postman.item);
-        
-        saveCollections([...collections, newCol]);
+        const collection = parseHttpFile(text, file.name);
+        if (collection.requests.length > 0) {
+          saveCollections([...collections, collection]);
+        } else {
+          alert('No requests found in HTTP file.');
+        }
       } catch (err) {
-        alert('Failed to import: Invalid Postman v2.1 JSON');
+        console.error(err);
+        alert('Failed to parse HTTP file.');
       }
-    };
-    reader.readAsText(file);
+    } else if (file.name.endsWith('.json')) {
+      try {
+        const data = JSON.parse(text);
+        
+        let isEnvFile = false;
+        if (data && !data.info && !data.item) {
+          const envs = parseHttpEnvironmentFile(text);
+          if (envs.length > 0) {
+            isEnvFile = true;
+            const newEnvs = [...environments, ...envs];
+            setEnvironments(newEnvs);
+            await window.api.writeEnvironments(newEnvs);
+            alert(`Imported ${envs.length} environments!`);
+          }
+        }
+        
+        if (!isEnvFile) {
+          const newCol: ApiCollection = {
+            id: data.info?._postman_id || Date.now().toString(),
+            name: data.info?.name || file.name.replace('.json', ''),
+            folders: [],
+            requests: []
+          };
+
+          const parseItems = (items: any[]) => {
+            items.forEach((item: any) => {
+              if(item.request) {
+                 newCol.requests.push({
+                   id: item.id || Date.now().toString() + Math.random().toString(36).substring(7),
+                   name: item.name,
+                   method: item.request.method,
+                   url: item.request.url?.raw || item.request.url || '',
+                   body: item.request.body?.raw || '',
+                   headers: item.request.header?.map((h: any) => ({key: h.key, value: h.value, active: true})) || [],
+                   params: [],
+                   preRequestScript: item.event?.find((ev:any)=>ev.listen==='prerequest')?.script?.exec?.join('\n') || '',
+                   testScript: item.event?.find((ev:any)=>ev.listen==='test')?.script?.exec?.join('\n') || ''
+                 });
+              } else if (item.item) {
+                 parseItems(item.item); 
+              }
+            });
+          };
+          
+          if (data.item) parseItems(data.item);
+          saveCollections([...collections, newCol]);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Failed to import JSON file');
+      }
+    }
     if(fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -826,8 +861,8 @@ function App() {
         <div className="p-5 border-b border-[var(--panel-border)] flex items-center justify-between bg-black/10" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
           <span className="font-bold text-text-primary text-lg">Collections</span>
           <div className="flex space-x-3 text-text-tertiary" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-            <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json" />
-            <button title="Import Postman" onClick={() => fileInputRef.current?.click()} className="hover:text-white transition-colors"><Upload size={18} /></button>
+            <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json,.http,.rest" />
+            <button title="Import Collection or Env" onClick={() => fileInputRef.current?.click()} className="hover:text-white transition-colors"><Upload size={18} /></button>
             <button title="Export Collections" onClick={exportCollections} className="hover:text-white transition-colors"><Download size={18} /></button>
             <button title="New Collection" onClick={createNewCollection} className="hover:text-[var(--accent)] transition-colors"><Plus size={18} /></button>
           </div>
