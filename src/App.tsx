@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye } from 'lucide-react'
+import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye, Edit2 } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 import type { ApiCollection, ApiRequest, HttpMethod, Environment, EnvironmentVariable, OpenTab } from './types'
 import { KeyValueEditor } from './KeyValueEditor'
@@ -52,6 +52,7 @@ function App() {
 
   const [collections, setCollections] = useState<ApiCollection[]>([])
   const [collapsedCollections, setCollapsedCollections] = useState<Set<string>>(new Set())
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   
   const [environments, setEnvironments] = useState<Environment[]>([])
   const [activeEnvironmentId, setActiveEnvironmentId] = useState<string>('none')
@@ -431,6 +432,16 @@ function App() {
     saveCollections(newCollections);
   }
 
+  const renameCollection = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const col = collections.find(c => c.id === id);
+    if (!col) return;
+    const newName = await showPrompt('Rename Collection:', col.name);
+    if (!newName || newName === col.name) return;
+    const newCollections = collections.map(c => c.id === id ? { ...c, name: newName } : c);
+    saveCollections(newCollections);
+  }
+
   const addNewRequestToCollection = async (e: React.MouseEvent, collectionId: string) => {
     e.stopPropagation();
     const name = await showPrompt('New Request Name:');
@@ -484,6 +495,29 @@ function App() {
         setActiveTabId(remainingTabs[remainingTabs.length - 1].id);
       }
     }
+  }
+
+  const renameRequest = async (e: React.MouseEvent, collectionId: string, requestId: string) => {
+    e.stopPropagation();
+    const col = collections.find(c => c.id === collectionId);
+    const req = col?.requests.find(r => r.id === requestId);
+    if (!req) return;
+    
+    const newName = await showPrompt('Rename Request:', req.name);
+    if (!newName || newName === req.name) return;
+    
+    const newCollections = collections.map(c => {
+      if (c.id === collectionId) {
+        return {
+          ...c,
+          requests: c.requests.map(r => r.id === requestId ? { ...r, name: newName } : r)
+        };
+      }
+      return c;
+    });
+    saveCollections(newCollections);
+    
+    updateTabWithoutDirty(requestId, { name: newName });
   }
 
 
@@ -689,6 +723,69 @@ function App() {
     });
   }
 
+  const handleDragStart = (e: React.DragEvent, type: 'request', colId: string, reqId: string) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ type, sourceColId: colId, sourceReqId: reqId }));
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    setDragOverId(id);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetType: 'collection' | 'request', targetColId: string, targetReqId?: string) => {
+    e.preventDefault();
+    setDragOverId(null);
+    
+    try {
+      const dataStr = e.dataTransfer.getData('application/json');
+      if (!dataStr) return;
+      
+      const data = JSON.parse(dataStr);
+      if (data.type !== 'request') return;
+      
+      const { sourceColId, sourceReqId } = data;
+      
+      // Prevent dropping on itself
+      if (targetType === 'request' && sourceReqId === targetReqId) return;
+      
+      const newCollections = [...collections];
+      const sourceColIdx = newCollections.findIndex(c => c.id === sourceColId);
+      if (sourceColIdx === -1) return;
+      
+      const sourceReqIdx = newCollections[sourceColIdx].requests.findIndex(r => r.id === sourceReqId);
+      if (sourceReqIdx === -1) return;
+      
+      // Clone the request
+      const movedReq = { ...newCollections[sourceColIdx].requests[sourceReqIdx] };
+      
+      // Remove from source
+      newCollections[sourceColIdx].requests.splice(sourceReqIdx, 1);
+      
+      const targetColIdx = newCollections.findIndex(c => c.id === targetColId);
+      if (targetColIdx === -1) return;
+      
+      if (targetType === 'collection') {
+        newCollections[targetColIdx].requests.push(movedReq);
+      } else if (targetType === 'request' && targetReqId) {
+        let targetReqIdx = newCollections[targetColIdx].requests.findIndex(r => r.id === targetReqId);
+        if (targetReqIdx === -1) {
+          newCollections[targetColIdx].requests.push(movedReq);
+        } else {
+          newCollections[targetColIdx].requests.splice(targetReqIdx, 0, movedReq);
+        }
+      }
+      
+      saveCollections(newCollections);
+      
+    } catch (err) {
+      console.error('Drag drop error:', err);
+    }
+  };
+
   return (
     <div className="flex h-screen w-screen bg-transparent text-text-secondary font-sans p-4 gap-4 overflow-hidden box-border" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
       
@@ -708,8 +805,11 @@ function App() {
           {collections.map(col => (
             <div key={col.id} className="mb-1">
               <div 
-                className="group flex items-center justify-between p-3 hover:bg-white/5 rounded-xl cursor-pointer text-sm font-semibold transition-colors border border-transparent hover:border-[var(--panel-border)]"
+                className={`group flex items-center justify-between p-3 hover:bg-white/5 rounded-xl cursor-pointer text-sm font-semibold transition-colors border ${dragOverId === `col-${col.id}` ? 'border-[var(--accent)] bg-white/10' : 'border-transparent hover:border-[var(--panel-border)]'}`}
                 onClick={() => toggleCollection(col.id)}
+                onDragOver={(e) => handleDragOver(e, `col-${col.id}`)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, 'collection', col.id)}
               >
                 <div className="flex items-center space-x-3 truncate">
                   <Folder size={16} className="text-[var(--accent)] flex-shrink-0" />
@@ -718,6 +818,9 @@ function App() {
                 <div className="hidden group-hover:flex items-center space-x-2 flex-shrink-0 text-text-tertiary">
                   <span title="Add Request" className="flex items-center justify-center cursor-pointer hover:text-[var(--accent)] bg-black/20 p-1.5 rounded-md transition-colors" onClick={(e) => addNewRequestToCollection(e, col.id)}>
                     <Plus size={14} />
+                  </span>
+                  <span title="Rename Collection" className="flex items-center justify-center cursor-pointer hover:text-[var(--accent)] bg-black/20 p-1.5 rounded-md transition-colors" onClick={(e) => renameCollection(e, col.id)}>
+                    <Edit2 size={14} />
                   </span>
                   <span title="Delete Collection" className="flex items-center justify-center cursor-pointer hover:text-red-400 bg-black/20 p-1.5 rounded-md transition-colors" onClick={(e) => deleteCollection(e, col.id)}>
                     <Trash size={14} />
@@ -732,7 +835,12 @@ function App() {
                       key={req.id} 
                       id={`request-item-${req.id}`}
                       onClick={() => loadRequest(req)}
-                      className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer text-sm transition-all border ${activeTabId === req.id ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-text-primary' : 'border-transparent text-text-tertiary hover:bg-white/5 hover:text-text-primary'}`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, 'request', col.id, req.id)}
+                      onDragOver={(e) => handleDragOver(e, `req-${req.id}`)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, 'request', col.id, req.id)}
+                      className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer text-sm transition-all border ${activeTabId === req.id ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-text-primary' : 'border-transparent text-text-tertiary hover:bg-white/5 hover:text-text-primary'} ${dragOverId === `req-${req.id}` ? 'border-t-[var(--accent)] border-t-2 rounded-t-none' : ''}`}
                     >
                       <div className="flex items-center space-x-3 truncate">
                         <span className={`text-[10px] font-bold w-10 ${
@@ -742,8 +850,11 @@ function App() {
                         }`}>{req.method}</span>
                         <span className="truncate">{req.name}</span>
                       </div>
-                      <div className="hidden group-hover:flex items-center flex-shrink-0">
-                        <span title="Delete Request" className="flex items-center justify-center cursor-pointer text-text-tertiary hover:text-red-400 p-1 transition-colors" onClick={(e) => deleteRequest(e, col.id, req.id)}>
+                      <div className="hidden group-hover:flex items-center space-x-1 flex-shrink-0 text-text-tertiary">
+                        <span title="Rename Request" className="flex items-center justify-center cursor-pointer hover:text-[var(--accent)] p-1 transition-colors" onClick={(e) => renameRequest(e, col.id, req.id)}>
+                          <Edit2 size={14} />
+                        </span>
+                        <span title="Delete Request" className="flex items-center justify-center cursor-pointer hover:text-red-400 p-1 transition-colors" onClick={(e) => deleteRequest(e, col.id, req.id)}>
                           <Trash size={14} />
                         </span>
                       </div>

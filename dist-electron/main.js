@@ -1,1 +1,232 @@
-var e=Object.create,t=Object.defineProperty,n=Object.getOwnPropertyDescriptor,r=Object.getOwnPropertyNames,i=Object.getPrototypeOf,a=Object.prototype.hasOwnProperty,o=(e,i,o,s)=>{if(i&&typeof i==`object`||typeof i==`function`)for(var c=r(i),l=0,u=c.length,d;l<u;l++)d=c[l],!a.call(e,d)&&d!==o&&t(e,d,{get:(e=>i[e]).bind(null,d),enumerable:!(s=n(i,d))||s.enumerable});return e},s=(n,r,a)=>(a=n==null?{}:e(i(n)),o(r||!n||!n.__esModule?t(a,`default`,{value:n,enumerable:!0}):a,n));let c=require(`electron`),l=require(`path`),u=require(`axios`);u=s(u);let d=require(`fs/promises`);d=s(d);let f=require(`fs`),p=require(`vm`);p=s(p),c.app.setName(`MyAPITester`),process.env.DIST=(0,l.join)(__dirname,`../dist`),process.env.VITE_PUBLIC=c.app.isPackaged?process.env.DIST:(0,l.join)(process.env.DIST,`../public`),process.platform===`darwin`&&c.app.dock.setIcon((0,l.join)(process.env.VITE_PUBLIC,`icon.png`));var m,h=(0,l.join)(__dirname,`./preload.js`),g=process.env.VITE_DEV_SERVER_URL;function _(){m=new c.BrowserWindow({width:1200,height:800,titleBarStyle:`hidden`,trafficLightPosition:{x:16,y:16},icon:(0,l.join)(process.env.VITE_PUBLIC,`icon.png`),webPreferences:{preload:h,nodeIntegration:!1,contextIsolation:!0}}),g?m.loadURL(g):m.loadFile((0,l.join)(process.env.DIST,`index.html`))}c.app.on(`window-all-closed`,()=>{process.platform!==`darwin`&&c.app.quit()}),c.app.on(`activate`,()=>{c.BrowserWindow.getAllWindows().length===0&&_()}),c.app.whenReady().then(()=>{c.app.setAboutPanelOptions({applicationName:`MyAPITester`,applicationVersion:`1.0.0`,iconPath:(0,l.join)(process.env.VITE_PUBLIC,`icon.png`)}),_(),c.ipcMain.handle(`send-request`,async(e,t)=>{try{let e=Date.now(),n=await(0,u.default)({...t,validateStatus:()=>!0}),r=Date.now()-e;return{status:n.status,statusText:n.statusText,headers:n.headers,data:n.data,time:r,size:JSON.stringify(n.data)?.length||0}}catch(e){return{error:e.message,status:0,statusText:`Error`,headers:{},data:e.message,time:0,size:0}}});let e=c.app.getPath(`userData`),t=(0,l.join)(e,`collections.json`);c.ipcMain.handle(`read-collections`,async()=>{try{if(!(0,f.existsSync)(t))return await d.default.writeFile(t,JSON.stringify([])),[];let e=await d.default.readFile(t,`utf-8`);return JSON.parse(e)}catch(e){return console.error(`Failed to read collections:`,e),[]}}),c.ipcMain.handle(`write-collections`,async(e,n)=>{try{return await d.default.writeFile(t,JSON.stringify(n,null,2)),{success:!0}}catch(e){return console.error(`Failed to write collections:`,e),{success:!1,error:e}}});let n=(0,l.join)(e,`globals.json`);c.ipcMain.handle(`read-globals`,async()=>{try{if(!(0,f.existsSync)(n))return await d.default.writeFile(n,JSON.stringify([])),[];let e=await d.default.readFile(n,`utf-8`);return JSON.parse(e)}catch{return[]}}),c.ipcMain.handle(`write-globals`,async(e,t)=>{try{return await d.default.writeFile(n,JSON.stringify(t,null,2)),{success:!0}}catch(e){return{success:!1,error:e}}});let r=(0,l.join)(e,`environments.json`);c.ipcMain.handle(`read-environments`,async()=>{try{if(!(0,f.existsSync)(r))return await d.default.writeFile(r,JSON.stringify([])),[];let e=await d.default.readFile(r,`utf-8`);return JSON.parse(e)}catch{return[]}}),c.ipcMain.handle(`write-environments`,async(e,t)=>{try{return await d.default.writeFile(r,JSON.stringify(t,null,2)),{success:!0}}catch(e){return{success:!1,error:e}}}),c.ipcMain.handle(`execute-script`,async(e,t)=>{try{let e={environment:{get:e=>t.pmData.environment[e],set:(e,n)=>{t.pmData.environment[e]=n}},globals:{get:e=>t.pmData.globals[e],set:(e,n)=>{t.pmData.globals[e]=n}},variables:{get:e=>t.pmData.environment[e]||t.pmData.globals[e]},response:t.pmData.response?{...t.pmData.response,json:()=>t.pmData.response.data}:void 0,info:t.pmData.info,request:t.pmData.request,test:(e,n)=>{try{n(),t.pmData.tests=t.pmData.tests||[],t.pmData.tests.push({name:e,status:`pass`})}catch(n){t.pmData.tests=t.pmData.tests||[],t.pmData.tests.push({name:e,status:`fail`,error:n.message})}}},n=p.default.createContext({pm:e,console});return p.default.runInContext(t.script,n),{success:!0,pmData:t.pmData}}catch(e){return{success:!1,error:e.message}}})});
+//#region \0rolldown/runtime.js
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
+		key = keys[i];
+		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
+			get: ((k) => from[k]).bind(null, key),
+			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+		});
+	}
+	return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
+	value: mod,
+	enumerable: true
+}) : target, mod));
+//#endregion
+let electron = require("electron");
+let path = require("path");
+let axios = require("axios");
+axios = __toESM(axios);
+let fs_promises = require("fs/promises");
+fs_promises = __toESM(fs_promises);
+let fs = require("fs");
+let vm = require("vm");
+vm = __toESM(vm);
+//#region electron/main.ts
+electron.app.setName("MyAPITester");
+process.env.DIST = (0, path.join)(__dirname, "../dist");
+process.env.VITE_PUBLIC = electron.app.isPackaged ? process.env.DIST : (0, path.join)(process.env.DIST, "../public");
+if (process.platform === "darwin") electron.app.dock.setIcon((0, path.join)(process.env.VITE_PUBLIC, "icon.png"));
+var win;
+var preload = (0, path.join)(__dirname, "./preload.js");
+var url = process.env.VITE_DEV_SERVER_URL;
+function createWindow() {
+	win = new electron.BrowserWindow({
+		width: 1200,
+		height: 800,
+		titleBarStyle: "hidden",
+		trafficLightPosition: {
+			x: 16,
+			y: 16
+		},
+		icon: (0, path.join)(process.env.VITE_PUBLIC, "icon.png"),
+		webPreferences: {
+			preload,
+			nodeIntegration: false,
+			contextIsolation: true
+		}
+	});
+	if (url) win.loadURL(url);
+	else win.loadFile((0, path.join)(process.env.DIST, "index.html"));
+}
+electron.app.on("window-all-closed", () => {
+	if (process.platform !== "darwin") electron.app.quit();
+});
+electron.app.on("activate", () => {
+	if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+electron.app.whenReady().then(() => {
+	electron.app.setAboutPanelOptions({
+		applicationName: "MyAPITester",
+		applicationVersion: "1.0.0",
+		iconPath: (0, path.join)(process.env.VITE_PUBLIC, "icon.png")
+	});
+	createWindow();
+	electron.ipcMain.handle("send-request", async (event, config) => {
+		try {
+			const startTime = Date.now();
+			const response = await (0, axios.default)({
+				...config,
+				validateStatus: () => true
+			});
+			const time = Date.now() - startTime;
+			return {
+				status: response.status,
+				statusText: response.statusText,
+				headers: response.headers,
+				data: response.data,
+				time,
+				size: JSON.stringify(response.data)?.length || 0
+			};
+		} catch (error) {
+			return {
+				error: error.message,
+				status: 0,
+				statusText: "Error",
+				headers: {},
+				data: error.message,
+				time: 0,
+				size: 0
+			};
+		}
+	});
+	const userDataPath = electron.app.getPath("userData");
+	const collectionsFile = (0, path.join)(userDataPath, "collections.json");
+	electron.ipcMain.handle("read-collections", async () => {
+		try {
+			if (!(0, fs.existsSync)(collectionsFile)) {
+				await fs_promises.default.writeFile(collectionsFile, JSON.stringify([]));
+				return [];
+			}
+			const data = await fs_promises.default.readFile(collectionsFile, "utf-8");
+			return JSON.parse(data);
+		} catch (error) {
+			console.error("Failed to read collections:", error);
+			return [];
+		}
+	});
+	electron.ipcMain.handle("write-collections", async (event, collections) => {
+		try {
+			await fs_promises.default.writeFile(collectionsFile, JSON.stringify(collections, null, 2));
+			return { success: true };
+		} catch (error) {
+			console.error("Failed to write collections:", error);
+			return {
+				success: false,
+				error
+			};
+		}
+	});
+	const globalsFile = (0, path.join)(userDataPath, "globals.json");
+	electron.ipcMain.handle("read-globals", async () => {
+		try {
+			if (!(0, fs.existsSync)(globalsFile)) {
+				await fs_promises.default.writeFile(globalsFile, JSON.stringify([]));
+				return [];
+			}
+			const data = await fs_promises.default.readFile(globalsFile, "utf-8");
+			return JSON.parse(data);
+		} catch {
+			return [];
+		}
+	});
+	electron.ipcMain.handle("write-globals", async (event, vars) => {
+		try {
+			await fs_promises.default.writeFile(globalsFile, JSON.stringify(vars, null, 2));
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error
+			};
+		}
+	});
+	const environmentsFile = (0, path.join)(userDataPath, "environments.json");
+	electron.ipcMain.handle("read-environments", async () => {
+		try {
+			if (!(0, fs.existsSync)(environmentsFile)) {
+				await fs_promises.default.writeFile(environmentsFile, JSON.stringify([]));
+				return [];
+			}
+			const data = await fs_promises.default.readFile(environmentsFile, "utf-8");
+			return JSON.parse(data);
+		} catch {
+			return [];
+		}
+	});
+	electron.ipcMain.handle("write-environments", async (event, envs) => {
+		try {
+			await fs_promises.default.writeFile(environmentsFile, JSON.stringify(envs, null, 2));
+			return { success: true };
+		} catch (error) {
+			return {
+				success: false,
+				error
+			};
+		}
+	});
+	electron.ipcMain.handle("execute-script", async (event, params) => {
+		try {
+			const pm = {
+				environment: {
+					get: (key) => params.pmData.environment[key],
+					set: (key, value) => {
+						params.pmData.environment[key] = value;
+					}
+				},
+				globals: {
+					get: (key) => params.pmData.globals[key],
+					set: (key, value) => {
+						params.pmData.globals[key] = value;
+					}
+				},
+				variables: { get: (key) => params.pmData.environment[key] || params.pmData.globals[key] },
+				response: params.pmData.response ? {
+					...params.pmData.response,
+					json: () => params.pmData.response.data
+				} : void 0,
+				info: params.pmData.info,
+				request: params.pmData.request,
+				test: (name, fn) => {
+					try {
+						fn();
+						params.pmData.tests = params.pmData.tests || [];
+						params.pmData.tests.push({
+							name,
+							status: "pass"
+						});
+					} catch (e) {
+						params.pmData.tests = params.pmData.tests || [];
+						params.pmData.tests.push({
+							name,
+							status: "fail",
+							error: e.message
+						});
+					}
+				}
+			};
+			const context = vm.default.createContext({
+				pm,
+				console
+			});
+			vm.default.runInContext(params.script, context);
+			return {
+				success: true,
+				pmData: params.pmData
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	});
+});
+//#endregion
