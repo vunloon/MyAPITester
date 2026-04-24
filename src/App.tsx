@@ -70,6 +70,38 @@ function App() {
 
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('theme') || 'dark')
 
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem('sidebarWidth');
+    return saved ? parseInt(saved, 10) : 320;
+  });
+  const isSidebarResizing = useRef(false);
+
+  useEffect(() => {
+    localStorage.setItem('sidebarWidth', sidebarWidth.toString());
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isSidebarResizing.current) return;
+      const newWidth = e.clientX - 16;
+      if (newWidth > 200 && newWidth < window.innerWidth / 2) {
+        setSidebarWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => {
+      if (isSidebarResizing.current) {
+        isSidebarResizing.current = false;
+        document.body.style.cursor = 'default';
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   const [responseHeight, setResponseHeight] = useState(300);
   const isResizing = useRef(false);
 
@@ -790,7 +822,7 @@ function App() {
     <div className="flex h-screen w-screen bg-transparent text-text-secondary font-sans p-4 gap-4 overflow-hidden box-border" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
       
       {/* Sidebar (Left Side) */}
-      <div className="w-80 flex flex-col bg-[var(--panel-bg)] border border-[var(--panel-border)] backdrop-blur-2xl rounded-2xl shadow-2xl overflow-hidden flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div className="flex flex-col bg-[var(--panel-bg)] border border-[var(--panel-border)] backdrop-blur-2xl rounded-2xl shadow-2xl overflow-hidden flex-shrink-0" style={{ width: sidebarWidth, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div className="p-5 border-b border-[var(--panel-border)] flex items-center justify-between bg-black/10" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
           <span className="font-bold text-text-primary text-lg">Collections</span>
           <div className="flex space-x-3 text-text-tertiary" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
@@ -888,6 +920,19 @@ function App() {
             <option value="hacker" className="bg-bg-surface">Hacker</option>
           </select>
         </div>
+      </div>
+
+      {/* Sidebar Resizer */}
+      <div 
+        className="w-4 flex justify-center cursor-col-resize group flex-shrink-0 z-50 relative"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          isSidebarResizing.current = true;
+          document.body.style.cursor = 'col-resize';
+        }}
+        style={{ marginLeft: '-10px', marginRight: '-10px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
+        <div className="w-1 h-full rounded-full transition-colors group-hover:bg-[var(--accent)] opacity-50 group-hover:opacity-100" />
       </div>
 
       {/* Main Content (Right Side) */}
