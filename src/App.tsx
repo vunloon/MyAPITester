@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye, Edit2, Copy, ClipboardPaste } from 'lucide-react'
+import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye, Edit2, Copy, ClipboardPaste, MoreHorizontal, List } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 import type { ApiCollection, ApiRequest, HttpMethod, Environment, EnvironmentVariable, OpenTab } from './types'
 import { KeyValueEditor } from './KeyValueEditor'
@@ -39,6 +39,14 @@ function App() {
   const [activeTabId, setActiveTabId] = useState<string>(() => {
     return localStorage.getItem('activeTabId') || 'default'
   })
+
+  const [tabBarWrap, setTabBarWrap] = useState(() => {
+    return localStorage.getItem('tabBarWrap') === 'true'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('tabBarWrap', tabBarWrap.toString())
+  }, [tabBarWrap])
 
   useEffect(() => {
     localStorage.setItem('openTabs', JSON.stringify(openTabs))
@@ -168,16 +176,7 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        saveCurrentRequest();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }); // Using no dependency array to always have the latest saveCurrentRequest closure
+
 
   useEffect(() => {
     loadData()
@@ -201,6 +200,13 @@ function App() {
         }
       }, 50);
     }
+    
+    setTimeout(() => {
+      const tabEl = document.getElementById(`tab-${activeTabId}`);
+      if (tabEl) {
+        tabEl.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+      }
+    }, 50);
   }, [activeTabId, collections]);
 
   const loadData = async () => {
@@ -774,6 +780,86 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        saveCurrentRequest();
+        return;
+      }
+
+      // Don't intercept if user is typing in an input or textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement).isContentEditable) {
+        return;
+      }
+
+      // Don't intercept if user has text selected
+      if (window.getSelection()?.toString()) {
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+        let activeReq: ApiRequest | null = null;
+        for (const col of collections) {
+          const req = col.requests.find(r => r.id === activeTabId);
+          if (req) {
+            activeReq = req;
+            break;
+          }
+        }
+        if (activeReq) {
+          setCopiedRequest(activeReq);
+        }
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+        if (!copiedRequest) return;
+        
+        let targetColId: string | null = null;
+        for (const col of collections) {
+          if (col.requests.some(r => r.id === activeTabId)) {
+            targetColId = col.id;
+            break;
+          }
+        }
+        
+        if (!targetColId && collections.length > 0) {
+          targetColId = collections[0].id;
+        }
+
+        if (targetColId) {
+          const newReq: ApiRequest = {
+            ...copiedRequest,
+            id: Date.now().toString() + Math.random().toString(36).substring(7),
+            name: `${copiedRequest.name} (Copy)`
+          };
+
+          const newCollections = collections.map(col => {
+            if (col.id === targetColId) {
+              return { ...col, requests: [...col.requests, newReq] };
+            }
+            return col;
+          });
+          
+          saveCollections(newCollections);
+          
+          if (collapsedCollections.has(targetColId)) {
+            toggleCollection(targetColId);
+          }
+        }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'q') {
+        e.preventDefault();
+        if (activeTabId) {
+          closeTab(null, activeTabId);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }); // Using no dependency array to always have the latest state closures
+
+
   const handleSwitchTab = async (newTabId: string) => {
     if (newTabId === activeTabId) return;
     if (currentTab && currentTab.isDirty) {
@@ -813,8 +899,12 @@ function App() {
     }
   }
 
-  const closeTab = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
+  const closeTab = async (e: React.MouseEvent | null, id: string) => {
+    if (e) e.stopPropagation();
+    
+    if (!window.confirm('Are you sure you want to close this tab?')) {
+      return;
+    }
     
     const tabToClose = openTabs.find(t => t.id === id);
     if (tabToClose && tabToClose.isDirty) {
@@ -1021,6 +1111,9 @@ function App() {
             <option value="dracula" className="bg-bg-surface">Dracula</option>
             <option value="nord" className="bg-bg-surface">Nord</option>
             <option value="hacker" className="bg-bg-surface">Hacker</option>
+            <option value="solarized-dark" className="bg-bg-surface">Solarized Dark</option>
+            <option value="monokai" className="bg-bg-surface">Monokai</option>
+            <option value="synthwave" className="bg-bg-surface">Synthwave</option>
           </select>
         </div>
       </div>
@@ -1042,51 +1135,64 @@ function App() {
       <div className="flex-1 flex flex-col min-w-0 bg-[var(--panel-bg)] border border-[var(--panel-border)] backdrop-blur-2xl rounded-2xl shadow-2xl overflow-hidden" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         
         {/* Tab Bar - Modern Pills */}
-        <div className="flex items-center bg-black/10 px-4 py-3 overflow-x-auto gap-2" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
-          {openTabs.map(tab => (
-            <div 
-              key={tab.id}
-              onClick={() => handleSwitchTab(tab.id)}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full cursor-pointer transition-all border ${activeTabId === tab.id ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-glow shadow-[var(--accent)]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] text-text-tertiary hover:text-text-primary hover:bg-white/5'}`}
-              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-            >
-              <span className={`text-[10px] font-bold ${
-                activeTabId === tab.id ? 'text-white' : 
-                tab.method === 'GET' ? 'text-green-400' :
-                tab.method === 'POST' ? 'text-yellow-400' :
-                tab.method === 'DELETE' ? 'text-red-400' : 'text-blue-400'
-              }`}>{tab.method}</span>
-              <span className="truncate max-w-[100px] text-xs font-medium">{tab.name}{tab.isDirty ? '*' : ''}</span>
-              <X size={12} className="hover:bg-black/20 rounded-full p-0.5" onClick={(e) => closeTab(e, tab.id)} />
+        <div className="flex bg-black/10 border-b border-[var(--panel-border)]" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
+          <div className={`flex flex-1 items-center px-4 py-3 gap-2 ${tabBarWrap ? 'flex-wrap overflow-y-auto max-h-48' : 'overflow-x-auto whitespace-nowrap'}`} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+            {openTabs.map(tab => (
+              <div 
+                key={tab.id}
+                id={`tab-${tab.id}`}
+                onClick={() => handleSwitchTab(tab.id)}
+                className={`flex-shrink-0 flex items-center space-x-2 px-3 py-1.5 rounded-full cursor-pointer transition-all border ${activeTabId === tab.id ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-glow shadow-[var(--accent)]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] text-text-tertiary hover:text-text-primary hover:bg-white/5'}`}
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+              >
+                <span className={`text-[10px] font-bold ${
+                  activeTabId === tab.id ? 'text-white' : 
+                  tab.method === 'GET' ? 'text-green-400' :
+                  tab.method === 'POST' ? 'text-yellow-400' :
+                  tab.method === 'DELETE' ? 'text-red-400' : 'text-blue-400'
+                }`}>{tab.method}</span>
+                <span className="truncate max-w-[100px] text-xs font-medium">{tab.name}{tab.isDirty ? '*' : ''}</span>
+                <X size={12} className="hover:bg-black/20 rounded-full p-0.5" onClick={(e) => closeTab(e, tab.id)} />
+              </div>
+            ))}
+            <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[var(--panel-bg)] border border-[var(--panel-border)] cursor-pointer hover:bg-white/10 text-text-tertiary transition-colors" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} onClick={async () => {
+              if (currentTab && currentTab.isDirty) {
+                 await saveTab(currentTab);
+              }
+              const newTab: OpenTab = {
+                 id: 'temp-' + Date.now(),
+                 name: 'New Request',
+                 method: 'GET',
+                 url: '',
+                 body: '{\n  \n}',
+                 preRequestScript: '',
+                 testScript: '',
+                 headers: [],
+                 params: [],
+                 response: null,
+                 testResults: [],
+                 activeEditorTab: 'Body',
+                 activeResponseTab: 'Body',
+                 isDirty: false,
+                 loading: false
+              };
+              setOpenTabs(prev => [...prev, newTab]);
+              setActiveTabId(newTab.id);
+            }}>
+              <Plus size={16} />
             </div>
-          ))}
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--panel-bg)] border border-[var(--panel-border)] cursor-pointer hover:bg-white/10 text-text-tertiary transition-colors" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties} onClick={async () => {
-            if (currentTab && currentTab.isDirty) {
-               await saveTab(currentTab);
-            }
-            const newTab: OpenTab = {
-               id: 'temp-' + Date.now(),
-               name: 'New Request',
-               method: 'GET',
-               url: '',
-               body: '{\n  \n}',
-               preRequestScript: '',
-               testScript: '',
-               headers: [],
-               params: [],
-               response: null,
-               testResults: [],
-               activeEditorTab: 'Body',
-               activeResponseTab: 'Body',
-               isDirty: false,
-               loading: false
-            };
-            setOpenTabs(prev => [...prev, newTab]);
-            setActiveTabId(newTab.id);
-          }}>
-            <Plus size={16} />
+          </div>
+          <div className="flex items-start justify-center p-3 pl-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+            <div 
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--panel-bg)] border border-[var(--panel-border)] cursor-pointer hover:bg-white/10 text-text-tertiary transition-colors"
+              onClick={() => setTabBarWrap(!tabBarWrap)}
+              title={tabBarWrap ? "Scroll horizontally" : "Wrap tabs vertically"}
+            >
+              {tabBarWrap ? <MoreHorizontal size={16} /> : <List size={16} />}
+            </div>
           </div>
         </div>
+
 
         {currentTab ? (
           <div className="flex-1 flex flex-col min-h-0 relative">
