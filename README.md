@@ -1,73 +1,79 @@
-# React + TypeScript + Vite
+# MyAPITester
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, fast, and lightweight desktop API testing client built with Electron, React, TypeScript, and Vite. Designed with a sleek glassmorphism interface and robust features to streamline your API testing and development workflow.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 🎨 **Modern Interface**: Beautiful glassmorphism UI with multiple built-in themes (Dark, Light, Dracula, Nord, Hacker) and customizable layouts, including a resizable collections sidebar.
+- 🗂 **Multi-Tabbed Workflow**: Work on multiple API requests simultaneously. Tab state is persisted automatically across application restarts.
+- 📂 **Collections & Organization**: Organize your API requests into collections with full drag-and-drop support for reordering and moving requests.
+- 🔄 **Extensive Import Support**: 
+  - **Postman Collections (v2.1)**: Easily migrate your existing Postman collections.
+  - **IntelliJ HTTP Client**: Full support for `.http` and `.rest` files, automatically parsing requests, headers, bodies, and embedded scripts.
+- 🌍 **Environment Management**: Create distinct environments (e.g., Development, Production), define global variables, and seamlessly inject them into URLs, headers, and request bodies using `{{variable}}` syntax. Import `http-client.env.json` files directly.
+- 🛠 **Powerful Scripting Engine**: Write pre-request scripts and test assertions. The execution sandbox supports both:
+  - **Postman API**: `pm.test`, `pm.environment.set`, `pm.globals.set`, etc.
+  - **IntelliJ API**: `client.test`, `client.assert`, `client.global.set`, etc.
+- 💻 **Advanced Request Tools**: Key-value editors for Headers and URL Parameters, Monaco-based code editor for JSON bodies, and instant "Copy as cURL" functionality.
+- 💾 **Local First**: All your data (collections, environments, globals, and tabs) is persisted securely on your local machine using Electron's `userData` store.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Framework**: React 19 + TypeScript
+- **Desktop Runtime**: Electron
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS + Vanilla CSS (for layout and variables)
+- **Editor**: `@monaco-editor/react`
+- **Icons**: `lucide-react`
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Ensure you have [Node.js](https://nodejs.org/) installed on your system.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/vunloon/MyAPITester.git
+   cd MyAPITester
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+### Development
+
+Start the development server and Electron app simultaneously with hot-module replacement (HMR):
+
+```bash
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Building for Production
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+MyAPITester uses `electron-builder` to package the application. You can build installers for your platform of choice:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **macOS (DMG)**: `npm run build:mac`
+- **Windows (NSIS)**: `npm run build:win`
+- **Linux (AppImage)**: `npm run build:linux`
+- **All Platforms**: `npm run build:all`
+
+The resulting installers will be located in the `release/` directory.
+
+## File Imports
+
+### Postman Collections
+To import a Postman collection, export it from Postman in the **Collection v2.1 (JSON)** format. Click the Import button (Upload icon) in the Collections sidebar and select your file.
+
+### IntelliJ HTTP Files
+You can import `.http` or `.rest` files directly. The parser will split requests using the `###` separator and accurately identify URLs, headers, payload bodies, and `> {% ... %}` script blocks.
+
+To import environment variables, select your `http-client.env.json` or `http-client.private.env.json` file. The environment structures will be merged into the Environment Manager.
+
+## License
+
+This project is private and maintained by vunloon.
