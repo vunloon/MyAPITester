@@ -51,7 +51,7 @@ export interface OpenTab {
   
   response: any | null;
   testResults: any[];
-  activeEditorTab: 'Params' | 'Headers' | 'Body' | 'Pre-request' | 'Tests';
+  activeEditorTab: 'Params' | 'Headers' | 'Body' | 'Pre-request' | 'Post-request';
   activeResponseTab: 'Body' | 'Tests';
   isDirty: boolean;
   loading?: boolean;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye, Edit2 } from 'lucide-react'
+import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye, Edit2, Copy, ClipboardPaste } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 import type { ApiCollection, ApiRequest, HttpMethod, Environment, EnvironmentVariable, OpenTab } from './types'
 import { KeyValueEditor } from './KeyValueEditor'
@@ -515,6 +515,66 @@ function App() {
     loadRequest(newReq);
   }
 
+  const [copiedRequest, setCopiedRequest] = useState<ApiRequest | null>(null);
+
+  const copyRequest = (e: React.MouseEvent, collectionId: string, requestId: string) => {
+    e.stopPropagation();
+    const col = collections.find(c => c.id === collectionId);
+    if (!col) return;
+    const req = col.requests.find(r => r.id === requestId);
+    if (!req) return;
+    setCopiedRequest(req);
+  }
+
+  const pasteRequest = (e: React.MouseEvent, collectionId: string) => {
+    e.stopPropagation();
+    if (!copiedRequest) return;
+    const newReq: ApiRequest = {
+      ...copiedRequest,
+      id: Date.now().toString() + Math.random().toString(36).substring(7),
+      name: `${copiedRequest.name} (Copy)`
+    };
+
+    const newCollections = collections.map(col => {
+      if (col.id === collectionId) {
+        return { ...col, requests: [...col.requests, newReq] };
+      }
+      return col;
+    });
+    
+    saveCollections(newCollections);
+    
+    if (collapsedCollections.has(collectionId)) {
+      toggleCollection(collectionId);
+    }
+  }
+
+  const duplicateRequest = (e: React.MouseEvent, collectionId: string, requestId: string) => {
+    e.stopPropagation();
+    const col = collections.find(c => c.id === collectionId);
+    if (!col) return;
+    const req = col.requests.find(r => r.id === requestId);
+    if (!req) return;
+
+    const newReq: ApiRequest = {
+      ...req,
+      id: Date.now().toString() + Math.random().toString(36).substring(7),
+      name: `${req.name} (Copy)`
+    };
+
+    const newCollections = collections.map(c => {
+      if (c.id === collectionId) {
+        const reqIndex = c.requests.findIndex(r => r.id === requestId);
+        const newRequests = [...c.requests];
+        newRequests.splice(reqIndex + 1, 0, newReq);
+        return { ...c, requests: newRequests };
+      }
+      return c;
+    });
+
+    saveCollections(newCollections);
+  }
+
   const deleteRequest = (e: React.MouseEvent, collectionId: string, requestId: string) => {
     e.stopPropagation();
     if (!confirm('Are you sure you want to delete this request?')) return;
@@ -886,6 +946,11 @@ function App() {
                   <span title="Add Request" className="flex items-center justify-center cursor-pointer hover:text-[var(--accent)] bg-black/20 p-1.5 rounded-md transition-colors" onClick={(e) => addNewRequestToCollection(e, col.id)}>
                     <Plus size={14} />
                   </span>
+                  {copiedRequest && (
+                    <span title="Paste Request" className="flex items-center justify-center cursor-pointer hover:text-[var(--accent)] bg-black/20 p-1.5 rounded-md transition-colors" onClick={(e) => pasteRequest(e, col.id)}>
+                      <ClipboardPaste size={14} />
+                    </span>
+                  )}
                   <span title="Rename Collection" className="flex items-center justify-center cursor-pointer hover:text-[var(--accent)] bg-black/20 p-1.5 rounded-md transition-colors" onClick={(e) => renameCollection(e, col.id)}>
                     <Edit2 size={14} />
                   </span>
@@ -918,6 +983,9 @@ function App() {
                         <span className="truncate">{req.name}</span>
                       </div>
                       <div className="hidden group-hover:flex items-center space-x-1 flex-shrink-0 text-text-tertiary">
+                        <span title="Copy Request" className="flex items-center justify-center cursor-pointer hover:text-[var(--accent)] p-1 transition-colors" onClick={(e) => copyRequest(e, col.id, req.id)}>
+                          <Copy size={14} />
+                        </span>
                         <span title="Rename Request" className="flex items-center justify-center cursor-pointer hover:text-[var(--accent)] p-1 transition-colors" onClick={(e) => renameRequest(e, col.id, req.id)}>
                           <Edit2 size={14} />
                         </span>
@@ -1095,7 +1163,7 @@ function App() {
             {/* Request Tabs & Editor */}
             <div className="flex-1 flex flex-col min-h-0 bg-black/10">
               <div className="flex space-x-6 px-6 pt-3 border-b border-[var(--panel-border)] text-sm font-medium bg-[var(--panel-bg)]">
-                {['Params', 'Headers', 'Body', 'Pre-request', 'Tests'].map(tab => (
+                {['Params', 'Headers', 'Body', 'Pre-request', 'Post-request'].map(tab => (
                   <button 
                     key={tab}
                     onClick={() => updateCurrentTab({ activeEditorTab: tab as any })}
@@ -1142,7 +1210,7 @@ function App() {
                     options={{ minimap: { enabled: false }, fontSize: 13 }}
                   />
                 )}
-                {currentTab.activeEditorTab === 'Tests' && (
+                {currentTab.activeEditorTab === 'Post-request' && (
                   <Editor
                     height="100%"
                     defaultLanguage="javascript"
