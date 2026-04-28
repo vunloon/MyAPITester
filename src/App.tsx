@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye, Edit2, Copy, ClipboardPaste, MoreHorizontal, List } from 'lucide-react'
+import { Plus, Folder, Settings, Send, Save, Globe, Download, Upload, X, Code, Check, Trash, Eye, Edit2, Copy, ClipboardPaste, MoreHorizontal, List, Link } from 'lucide-react'
 import Editor from '@monaco-editor/react'
 import type { ApiCollection, ApiRequest, HttpMethod, Environment, EnvironmentVariable, OpenTab } from './types'
 import { KeyValueEditor } from './KeyValueEditor'
 import type { KeyValueItem } from './KeyValueEditor'
 import { PromptDialog } from './PromptDialog'
 import { EnvironmentManager } from './EnvironmentManager'
+import { ImportFromUrlDialog } from './ImportFromUrlDialog'
 import { parseHttpFile } from './utils/httpParser'
 import { parseHttpEnvironmentFile } from './utils/envParser'
 function App() {
@@ -69,6 +70,7 @@ function App() {
     { key: 'baseUrl', value: 'https://jsonplaceholder.typicode.com', enabled: true }
   ])
   const [isEnvManagerOpen, setIsEnvManagerOpen] = useState(false);
+  const [isImportUrlOpen, setIsImportUrlOpen] = useState(false);
 
   const handleSaveEnvironments = async (newEnvs: Environment[], newGlobs: EnvironmentVariable[]) => {
     setEnvironments(newEnvs);
@@ -1012,6 +1014,7 @@ function App() {
           <span className="font-bold text-text-primary text-lg">Collections</span>
           <div className="flex space-x-3 text-text-tertiary" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json,.http,.rest" />
+            <button title="Import from URL (WSDL/WADL/OpenAPI)" onClick={() => setIsImportUrlOpen(true)} className="hover:text-[var(--accent)] transition-colors"><Link size={18} /></button>
             <button title="Import Collection or Env" onClick={() => fileInputRef.current?.click()} className="hover:text-white transition-colors"><Upload size={18} /></button>
             <button title="Export Collections" onClick={exportCollections} className="hover:text-white transition-colors"><Download size={18} /></button>
             <button title="New Collection" onClick={createNewCollection} className="hover:text-[var(--accent)] transition-colors"><Plus size={18} /></button>
@@ -1433,6 +1436,15 @@ function App() {
         environments={environments}
         globals={globals}
         onSave={handleSaveEnvironments}
+      />
+
+      <ImportFromUrlDialog
+        isOpen={isImportUrlOpen}
+        onClose={() => setIsImportUrlOpen(false)}
+        onImport={(newCollections) => {
+          saveCollections([...collections, ...newCollections]);
+        }}
+        sendRequest={(config) => window.api.sendRequest(config)}
       />
     </div>
   )
