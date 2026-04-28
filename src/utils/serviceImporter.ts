@@ -89,7 +89,7 @@ export function parseCxfListing(html: string, sourceUrl: string): DiscoveredServ
   return Array.from(serviceMap.values());
 }
 
-export function parseOpenApi(data: any, serviceName: string, sourceUrl: string): ApiRequest[] {
+export function parseOpenApi(data: any, _serviceName: string, sourceUrl: string): ApiRequest[] {
   const spec = typeof data === 'string' ? JSON.parse(data) : data;
   const requests: ApiRequest[] = [];
 
@@ -174,7 +174,7 @@ export function parseOpenApi(data: any, serviceName: string, sourceUrl: string):
   return requests;
 }
 
-export function parseWadl(xml: string, serviceName: string): ApiRequest[] {
+export function parseWadl(xml: string, _serviceName: string): ApiRequest[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, 'application/xml');
   const requests: ApiRequest[] = [];
@@ -241,7 +241,7 @@ export function parseWadl(xml: string, serviceName: string): ApiRequest[] {
   return requests;
 }
 
-export function parseWsdl(xml: string, serviceName: string): ApiRequest[] {
+export function parseWsdl(xml: string, _serviceName: string): ApiRequest[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, 'application/xml');
   const requests: ApiRequest[] = [];
@@ -276,7 +276,7 @@ export function parseWsdl(xml: string, serviceName: string): ApiRequest[] {
 
   // Find binding operations for SOAPAction
   const soapActions = new Map<string, string>();
-  const bindingOps = doc.querySelectorAll('binding > operation, binding operation');
+  // Iterate all operations to find SOAPAction values from binding operations
   for (let i = 0; i < operations.length; i++) {
     const op = operations[i];
     const opName = op.getAttribute('name');
@@ -368,7 +368,7 @@ ${bodyContent}
 </soap:Envelope>`;
 }
 
-function buildXmlFromSchemaElement(element: Element, tns: string, indent: number): string {
+function buildXmlFromSchemaElement(element: Element, _tns: string, indent: number): string {
   const name = element.getAttribute('name') || 'unknown';
   const spaces = ' '.repeat(indent * 2);
 
