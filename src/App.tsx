@@ -940,9 +940,7 @@ function App() {
   const closeTab = async (e: React.MouseEvent | null, id: string) => {
     if (e) e.stopPropagation();
 
-    if (!window.confirm('Are you sure you want to close this tab?')) {
-      return;
-    }
+
 
     const tabToClose = openTabs.find(t => t.id === id);
     if (tabToClose && tabToClose.isDirty) {
