@@ -28,16 +28,19 @@
       "dist-electron"
     ],
     "mac": {
+      "icon": "public/icon.png",
       "target": [
         "dmg"
       ]
     },
     "win": {
+      "icon": "public/icon.png",
       "target": [
         "nsis"
       ]
     },
     "linux": {
+      "icon": "public/icon.png",
       "target": [
         "AppImage"
       ]
