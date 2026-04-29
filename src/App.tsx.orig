@@ -96,9 +96,6 @@ function App() {
   const [collections, setCollections] = useState<ApiCollection[]>([])
   const [collapsedCollections, setCollapsedCollections] = useState<Set<string>>(new Set())
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  
-  const [popupInfo, setPopupInfo] = useState<{ id: string, name: string, top: number, left: number } | null>(null);
-  const popupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [environments, setEnvironments] = useState<Environment[]>([])
   const [activeEnvironmentId, setActiveEnvironmentId] = useState<string>('none')
@@ -1095,40 +1092,13 @@ function App() {
                     <div
                       key={req.id}
                       id={`request-item-${req.id}`}
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.currentTarget.focus();
-                        if (popupTimer.current) clearTimeout(popupTimer.current);
-                        const target = e.currentTarget as HTMLElement;
-                        popupTimer.current = setTimeout(() => {
-                          const rect = target.getBoundingClientRect();
-                          setPopupInfo({
-                            id: req.id,
-                            name: req.name,
-                            top: rect.bottom + 4,
-                            left: rect.left + 20
-                          });
-                        }, 500);
-                      }}
-                      onDoubleClick={() => {
-                        if (popupTimer.current) clearTimeout(popupTimer.current);
-                        setPopupInfo(null);
-                        loadRequest(req);
-                      }}
-                      onMouseLeave={() => {
-                        if (popupTimer.current) clearTimeout(popupTimer.current);
-                        setPopupInfo(null);
-                      }}
-                      onBlur={() => {
-                        if (popupTimer.current) clearTimeout(popupTimer.current);
-                        setPopupInfo(null);
-                      }}
+                      onClick={() => loadRequest(req)}
                       draggable
                       onDragStart={(e) => handleDragStart(e, 'request', col.id, req.id)}
                       onDragOver={(e) => handleDragOver(e, `req-${req.id}`)}
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, 'request', col.id, req.id)}
-                      className={`group focus:outline-none focus:ring-1 focus:ring-[var(--accent)] flex items-center justify-between p-2 rounded-lg cursor-pointer text-sm transition-all border ${activeTabId === req.id ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-text-primary' : 'border-transparent text-text-tertiary hover:bg-white/5 hover:text-text-primary'} ${dragOverId === `req-${req.id}` ? 'border-t-[var(--accent)] border-t-2 rounded-t-none' : ''}`}
+                      className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer text-sm transition-all border ${activeTabId === req.id ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-text-primary' : 'border-transparent text-text-tertiary hover:bg-white/5 hover:text-text-primary'} ${dragOverId === `req-${req.id}` ? 'border-t-[var(--accent)] border-t-2 rounded-t-none' : ''}`}
                     >
                       <div className="flex items-center space-x-3 truncate">
                         <span className={`text-[10px] font-bold w-10 ${req.method === 'GET' ? 'text-green-400' :
@@ -1509,15 +1479,6 @@ function App() {
         }}
         sendRequest={(config) => window.api.sendRequest(config)}
       />
-
-      {popupInfo && (
-        <div 
-          className="fixed z-50 bg-[var(--panel-bg)] text-text-primary text-xs px-3 py-2 rounded-lg shadow-2xl border border-[var(--panel-border)] pointer-events-none break-words max-w-sm"
-          style={{ top: popupInfo.top, left: popupInfo.left }}
-        >
-          {popupInfo.name}
-        </div>
-      )}
     </div>
   )
 }

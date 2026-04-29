@@ -188,3 +188,20 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--text-tertiary);
 }
+
+@keyframes scroll-text {
+  0%, 15% {
+    transform: translateX(0);
+  }
+  42%, 58% {
+    transform: translateX(calc(100px - 100%));
+  }
+  85%, 100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-scroll-text {
+  animation: scroll-text 4s ease-in-out infinite;
+  will-change: transform;
+}

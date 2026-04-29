@@ -1,0 +1,12 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -95,6 +95,9 @@
+   const [collections, setCollections] = useState<ApiCollection[]>([])
+   const [collapsedCollections, setCollapsedCollections] = useState<Set<string>>(new Set())
+   const [dragOverId, setDragOverId] = useState<string | null>(null);
++  
++  const [popupInfo, setPopupInfo] = useState<{ id: string, name: string, top: number, left: number } | null>(null);
++  const popupTimer = useRef<NodeJS.Timeout | null>(null);
+ 
+   const [environments, setEnvironments] = useState<Environment[]>([])
+   const [activeEnvironmentId, setActiveEnvironmentId] = useState<string>('none')
